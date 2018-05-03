@@ -1,7 +1,18 @@
-template <typename PointT>
+#include <fstream>
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/console/time.h>
+#include <pcl/filters/uniform_sampling.h>
+#include <pcl/visualization/cloud_viewer.h>
+
+// libLAS library
+#include <liblas/liblas.hpp>
+
+template <typename PointInT>
 int
-readLAS2PCD(std::string fileToRead,
-            typename pcl::PointCloud<PointT>::Ptr &cloud,
+readlas2pcd(std::string fileToRead,
+            typename pcl::PointCloud<PointInT>::Ptr &cloud,
             std::vector<double> minXYZValues,
             float gridLeafSize,
             bool subtractMinVals)
@@ -30,7 +41,7 @@ readLAS2PCD(std::string fileToRead,
     std::cout << "\nSignature: " << header.GetFileSignature() << '\n';
     std::cout << "Points count: " << nPts << '\n';
 
-
+    int pInfo = nPts * 0.025;
 
     // Fill in the PCD cloud data
     cloud->width    = nPts;
@@ -73,8 +84,8 @@ readLAS2PCD(std::string fileToRead,
         cloud->points[i].z = (float) p.GetZ();
         cloud->points[i].intensity = p.GetIntensity();
 
-        if (i % 500000 == 0)
-            std::cout << i  << "  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
+        if (i % pInfo == 0)
+            std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
 
 
         i++;
@@ -92,8 +103,8 @@ readLAS2PCD(std::string fileToRead,
           cloud->points[i].y = PCPointsY[i] - minY;
           cloud->points[i].z = PCPointsZ[i] - minZ;
 
-          if (i % 500000 == 0){
-            std::cout << i  << "  x: " << cloud->points[i].x << "  y: " << cloud->points[i].y <<
+          if (i % pInfo == 0){
+            std::cout << "Point nr. :" << i  << "\t\t  x: " << cloud->points[i].x << "  y: " << cloud->points[i].y <<
                          "  z: " << cloud->points[i].z  << "    intensity:  " << cloud->points[i].intensity << std::endl;
           }
       }
@@ -103,17 +114,17 @@ readLAS2PCD(std::string fileToRead,
     pcl::console::TicToc time;
     time.tic ();
 
-    typename pcl::PointCloud<PointT>::Ptr cloudFiltered =  boost::make_shared<pcl::PointCloud<PointT> >();
+    typename pcl::PointCloud<PointInT>::Ptr cloudFiltered =  boost::make_shared<pcl::PointCloud<PointInT> >();
 
 
-    if (gridLeafSize > 0.029 && gridLeafSize < 1){
+    if (gridLeafSize > 0.025 && gridLeafSize < 1){
       std::cout << "\nApplying Uniform downsampling with leafSize " << gridLeafSize << ". Processing...";
 
-      pcl::UniformSampling<PointT> uniform_sampling;
+      pcl::UniformSampling<PointInT> uniform_sampling;
       uniform_sampling.setInputCloud (cloud);
       uniform_sampling.setRadiusSearch (gridLeafSize); //the 3D grid leaf size
       uniform_sampling.filter(*cloudFiltered);
-      std::cout << "Downsampled in " << time.toc() / 1000. << " s" << std::endl;
+      std::cout << "Downsampled in " << time.toc() / 1000. << " seconds \n" << std::endl;
       pcl::copyPointCloud(*cloudFiltered, *cloud);  // cloud is given by reference so the downsampled cloud has to be copied in there
 
     }
@@ -123,7 +134,7 @@ readLAS2PCD(std::string fileToRead,
     std::string fileToWrite = fileToRead + ".pcd";
     std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
     pcl::io::savePCDFile (fileToWrite, *cloudFiltered,true);
-    std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << std::endl;
+    std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
 
 
 }
