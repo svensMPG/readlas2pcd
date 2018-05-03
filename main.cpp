@@ -75,7 +75,7 @@ int  main (int argc, char** argv){
 
            // store minvalues to restore the original coordinates later after processing is completed
         std::vector<double> minXYZValues;
-        // reading in LAS file and returning a PCD cloud XYZI data.
+        // reading in LAS file and returning a PCD cloud PointT data.
         readlas2pcd<PointT>(argv[1], cloudIn, minXYZValues, gridLeafSize, subtractMinVals);
 
 
