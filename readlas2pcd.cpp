@@ -79,9 +79,9 @@ readlas2pcd(std::string fileToRead,
 
         // in case the user has not specified the -setZero flag. Take the values as they
         // are, without subtracting the min values and just cast them to float.
-        cloud->points[i].x = (float) p.GetX();
-        cloud->points[i].y = (float) p.GetY();
-        cloud->points[i].z = (float) p.GetZ();
+        cloud->points[i].x = float (p.GetX());
+        cloud->points[i].y = float (p.GetY());
+        cloud->points[i].z = float (p.GetZ());
         cloud->points[i].intensity = p.GetIntensity();
 
         if (i % pInfo == 0)
@@ -135,6 +135,67 @@ readlas2pcd(std::string fileToRead,
     std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
     pcl::io::savePCDFile (fileToWrite, *cloudFiltered,true);
     std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
+
+
+}
+
+
+
+//////////////////////////////////////////
+///
+///
+template <typename PointInT>
+int
+readlas2txt(std::string fileToRead)
+{
+
+    std::cout << "debug: writing the point cloud to text file. This will take some time....\n";
+    // 1) create a file stream object to access the file
+    std::ifstream ifs;
+    ifs.open(fileToRead, std::ios::in | std::ios::binary);
+    // if the LAS file could not be opend. throw an error (using the PCL_ERROR functionality).
+    if (!ifs.is_open())
+    {
+        PCL_ERROR ("Couldn't read file ");
+        return -1;
+    }
+
+    // set up ReaderFactory of the LibLAS library for reading in the data.
+    std::cout << "Reading in LAS input file: " << fileToRead << std::endl;
+
+    liblas::ReaderFactory f;
+    liblas::Reader reader = f.CreateWithStream(ifs);
+
+    liblas::Header const& header = reader.GetHeader();
+
+    long int nPts = header.GetPointRecordsCount();
+    std::cout << "Compressed:  " << (header.Compressed() == true) ? "true\n":"false\n";
+    std::cout << "\nSignature: " << header.GetFileSignature() << '\n';
+    std::cout << "Points count: " << nPts << '\n';
+
+    long long pInfo = static_cast<long long>(nPts * 0.025);
+
+    long long i = 0;
+
+    std::string fileToWrite = fileToRead + ".txt";
+    std::ofstream txtfile (fileToWrite);
+   /* std::ostringstream oss;
+    oss.flags (std::ios::scientific);
+    oss.precision (std::numeric_limits<double>::digits10 + 1);
+*/
+    while (reader.ReadNextPoint()){
+        liblas::Point const& p = reader.GetPoint();
+        txtfile.precision(14);
+        txtfile << p.GetX() << " " << p.GetY() << " " << p.GetZ() << std::endl;
+
+        if (i % pInfo == static_cast<long long> (0))
+            std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
+        i++;
+    }
+
+    txtfile.close();
+
+    std::cerr << "Saved " << i << " Points to " << fileToWrite << " \n" << std::endl;
 
 
 }

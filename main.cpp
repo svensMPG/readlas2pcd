@@ -42,7 +42,8 @@ int  main (int argc, char** argv){
   if (argc < 2){
       pcl::console::print_error ("Syntax is: %%s <LAS-INPUT>  \t are mandatory.\nOtional are: \n "
                                          "-setZero: setMinXYZ close to zero. set to 1 (enable) or 0 (disable) \n "
-                                         "-downsample: float [0, 0.025,1] \n", argv[0]);
+                                         "-downsample: float [0, 0.025,1] \n"
+                                         "-ext: (optional), use [pcd=default or txt]", argv[0]);
       return -1;
    }
 
@@ -51,6 +52,15 @@ int  main (int argc, char** argv){
     bool subtractMinVals = false;
     pcl::console::parse (argc, argv, "-setZero", subtractMinVals);
 
+    //check if extension keyword was specified. If not, use pcd, else use xyz extension.
+    bool Extension_specified = pcl::console::find_switch (argc, argv, "-ext");
+    std::string ext = "txt";
+    if (Extension_specified){
+        pcl::console::parse (argc, argv, "-ext", ext);
+        if (ext.compare("txt") != 0)
+            ext="pcd";
+        // else, do nothing because it is already specified as txt
+    }
 
     // check if the user wants to downsample the point cloud using the voxelgrid function. Specfiy standard values for the leafSize.
     float gridLeafSize = 0.25;
@@ -76,12 +86,12 @@ int  main (int argc, char** argv){
            // store minvalues to restore the original coordinates later after processing is completed
         std::vector<double> minXYZValues;
         // reading in LAS file and returning a PCD cloud PointT data.
-        readlas2pcd<PointT>(argv[1], cloudIn, minXYZValues, gridLeafSize, subtractMinVals);
-
-
-    viewer<PointT> (cloudIn);
-
-
+        if (ext.compare("pcd") == 0){
+            readlas2pcd<PointT>(argv[1], cloudIn, minXYZValues, gridLeafSize, subtractMinVals);
+            viewer<PointT> (cloudIn);
+        }
+        else
+            readlas2txt<PointT>(argv[1]);
 
     return (0);
 }
