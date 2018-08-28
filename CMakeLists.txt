@@ -9,5 +9,5 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable (readLAS2PCD main.cpp readlas2pcd.cpp)
+add_executable (readLAS2PCD main.cpp convertlas.h)
 target_link_libraries (readLAS2PCD ${PCL_LIBRARIES} ${libLAS_LIBRARIES})

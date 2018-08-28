@@ -4,7 +4,8 @@
 
 #include <pcl/console/parse.h>
 
-#include "readlas2pcd.cpp"
+//#include "readlas2pcd.cpp"
+#include "convertlas.h"
 
 typedef pcl::PointXYZI PointT;
 
@@ -57,14 +58,19 @@ int  main (int argc, char** argv){
     std::string ext = "txt";
     if (Extension_specified){
         pcl::console::parse (argc, argv, "-ext", ext);
-        if (ext.compare("txt") != 0)
-            ext="pcd";
-        // else, do nothing because it is already specified as txt
+        if (ext.compare("pcd") != 0 || ext.compare("pcd") != 0 || ext.compare("pcd") != 0 )
+            std::cout << "debug: extension is: " << ext << std::endl;
+        else {
+            std::cout << "unknown extension: " << ext << "\nUsing default extension txt" << std::endl;
+            ext = "txt";
+        }
     }
 
     // check if the user wants to downsample the point cloud using the voxelgrid function. Specfiy standard values for the leafSize.
     float gridLeafSize = 0.25;
     bool LeafSize_specified = pcl::console::find_switch (argc, argv, "-downsample");
+    if (!LeafSize_specified)
+        gridLeafSize = 0;
 
     if (LeafSize_specified){
         pcl::console::parse (argc, argv, "-downsample", gridLeafSize);
@@ -86,12 +92,12 @@ int  main (int argc, char** argv){
            // store minvalues to restore the original coordinates later after processing is completed
         std::vector<double> minXYZValues;
         // reading in LAS file and returning a PCD cloud PointT data.
-        if (ext.compare("pcd") == 0){
-            readlas2pcd<PointT>(argv[1], cloudIn, minXYZValues, gridLeafSize, subtractMinVals);
-            viewer<PointT> (cloudIn);
-        }
-        else
-            readlas2txt<PointT>(argv[1]);
+       // if (ext.compare("pcd") == 0){
+        convertLAS<PointT>(argv[1], cloudIn, minXYZValues, gridLeafSize, subtractMinVals, ext);
+        //    viewer<PointT> (cloudIn);
+       // }
+        //else
+         //   readlas2txt<PointT>(argv[1]);
 
     return (0);
 }

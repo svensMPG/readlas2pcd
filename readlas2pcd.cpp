@@ -1,6 +1,9 @@
 #include <fstream>
+#include <vector>
+#include <string>
 
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 #include <pcl/console/time.h>
 #include <pcl/filters/uniform_sampling.h>
@@ -9,14 +12,73 @@
 // libLAS library
 #include <liblas/liblas.hpp>
 
-template <typename PointInT>
-int
-readlas2pcd(std::string fileToRead,
-            typename pcl::PointCloud<PointInT>::Ptr &cloud,
-            std::vector<double> minXYZValues,
-            float gridLeafSize,
-            bool subtractMinVals)
+//////////////////////////////////////////
+///
+///
+int toTXT(std::string fileToRead)
 {
+
+    std::cout << "debug: writing the point cloud to text file. This will take some time....\n";
+    // 1) create a file stream object to access the file
+    std::ifstream ifs;
+    ifs.open(fileToRead, std::ios::in | std::ios::binary);
+    // if the LAS file could not be opend. throw an error (using the PCL_ERROR functionality).
+    if (!ifs.is_open())
+    {
+        PCL_ERROR ("Couldn't read file ");
+        return -1;
+    }
+
+    // set up ReaderFactory of the LibLAS library for reading in the data.
+    std::cout << "Reading in LAS input file: " << fileToRead << std::endl;
+
+    liblas::ReaderFactory f;
+    liblas::Reader reader = f.CreateWithStream(ifs);
+
+    liblas::Header const& header = reader.GetHeader();
+
+    long int nPts = header.GetPointRecordsCount();
+    std::cout << "Compressed:  " << (header.Compressed() == true) ? "true\n":"false\n";
+    std::cout << "\nSignature: " << header.GetFileSignature() << '\n';
+    std::cout << "Points count: " << nPts << '\n';
+
+    long long pInfo = static_cast<long long>(nPts * 0.025);
+
+    long long i = 0;
+
+    std::string fileToWrite = fileToRead + ".txt";
+    std::ofstream txtfile (fileToWrite);
+
+    unsigned int intensity;
+    while (reader.ReadNextPoint()){
+        liblas::Point const& p = reader.GetPoint();
+        txtfile.precision(11);
+        // convert intensity from an 8 bits scale to an 16 bits scale.
+        intensity= static_cast<unsigned int>( ( (p.GetIntensity() - 0) / (255 - 0) ) * 65535 );
+
+        txtfile << p.GetX() << " " << p.GetY() << " " << p.GetZ() << " " << intensity << " " << intensity << " " << intensity << std::endl;
+
+        if (i % pInfo == static_cast<long long> (0))
+            std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
+        i++;
+    }
+
+    txtfile.close();
+
+    std::cerr << "Saved " << i << " Points to " << fileToWrite << " \n" << std::endl;
+
+
+}
+
+
+template <typename PointInT> int
+toPCD(std::string fileToRead,
+      typename pcl::PointCloud<PointInT>::Ptr &cloud,
+      std::vector<double> &minXYZValues,
+      float gridLeafSize,
+      bool subtractMinVals,
+      std::string ext){
+
 
     // 1) create a file stream object to access the file
     std::ifstream ifs;
@@ -131,72 +193,44 @@ readlas2pcd(std::string fileToRead,
     else  // else copy original cloud in cloud Filtered and save file...
         pcl::copyPointCloud(*cloud,*cloudFiltered);
 
-    std::string fileToWrite = fileToRead + ".pcd";
-    std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
-    pcl::io::savePCDFile (fileToWrite, *cloudFiltered,true);
-    std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
+    if (ext.compare("pcd") == 0){
+        std::string fileToWrite = fileToRead + ".pcd";
+        std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
+        pcl::io::savePCDFile (fileToWrite, *cloudFiltered,false);
+        std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
+    }
+    else{
+        std::string fileToWrite = fileToRead + ".ply";
+        std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
+        pcl::io::savePLYFileASCII(fileToWrite, *cloudFiltered);
+        std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
+    }
+
+
 
 
 }
 
 
 
-//////////////////////////////////////////
-///
-///
-template <typename PointInT>
-int
-readlas2txt(std::string fileToRead)
+template <typename PointInT> void
+convertLAS(std::string fileToRead,
+            typename pcl::PointCloud<PointInT>::Ptr &cloud,
+            std::vector<double> &minXYZValues,
+            float gridLeafSize,
+            bool subtractMinVals,
+            std::string ext)
 {
-
-    std::cout << "debug: writing the point cloud to text file. This will take some time....\n";
-    // 1) create a file stream object to access the file
-    std::ifstream ifs;
-    ifs.open(fileToRead, std::ios::in | std::ios::binary);
-    // if the LAS file could not be opend. throw an error (using the PCL_ERROR functionality).
-    if (!ifs.is_open())
-    {
-        PCL_ERROR ("Couldn't read file ");
-        return -1;
-    }
-
-    // set up ReaderFactory of the LibLAS library for reading in the data.
-    std::cout << "Reading in LAS input file: " << fileToRead << std::endl;
-
-    liblas::ReaderFactory f;
-    liblas::Reader reader = f.CreateWithStream(ifs);
-
-    liblas::Header const& header = reader.GetHeader();
-
-    long int nPts = header.GetPointRecordsCount();
-    std::cout << "Compressed:  " << (header.Compressed() == true) ? "true\n":"false\n";
-    std::cout << "\nSignature: " << header.GetFileSignature() << '\n';
-    std::cout << "Points count: " << nPts << '\n';
-
-    long long pInfo = static_cast<long long>(nPts * 0.025);
-
-    long long i = 0;
-
-    std::string fileToWrite = fileToRead + ".txt";
-    std::ofstream txtfile (fileToWrite);
-   /* std::ostringstream oss;
-    oss.flags (std::ios::scientific);
-    oss.precision (std::numeric_limits<double>::digits10 + 1);
-*/
-    while (reader.ReadNextPoint()){
-        liblas::Point const& p = reader.GetPoint();
-        txtfile.precision(14);
-        txtfile << p.GetX() << " " << p.GetY() << " " << p.GetZ() << std::endl;
-
-        if (i % pInfo == static_cast<long long> (0))
-            std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
-        i++;
-    }
-
-    txtfile.close();
-
-    std::cerr << "Saved " << i << " Points to " << fileToWrite << " \n" << std::endl;
-
+    if(ext.compare("pcd") == 0 || ext.compare("ply") == 0)
+        toPCD <PointInT> (fileToRead, cloud, minXYZValues, gridLeafSize, subtractMinVals, ext);
+    else
+        toTXT(fileToRead);
 
 }
+
+
+
+
+
+
 
