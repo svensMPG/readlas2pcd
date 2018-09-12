@@ -1,3 +1,5 @@
+#ifndef CONVERTLAS_H
+
 #include <fstream>
 #include <vector>
 #include <string>
@@ -11,11 +13,13 @@
 
 // libLAS library
 #include <liblas/liblas.hpp>
+#define CONVERTLAS_H
+
 
 //////////////////////////////////////////
 ///
 ///
-int toTXT(std::string fileToRead)
+int toTXT(std::string fileToRead, unsigned int skipPts, unsigned int colorDepth)
 {
 
     std::cout << "debug: writing the point cloud to text file. This will take some time....\n";
@@ -42,7 +46,7 @@ int toTXT(std::string fileToRead)
     std::cout << "\nSignature: " << header.GetFileSignature() << '\n';
     std::cout << "Points count: " << nPts << '\n';
 
-    long long pInfo = static_cast<long long>(nPts * 0.025);
+    long long pInfo = static_cast<long long>(nPts * 0.25);
 
     long long i = 0;
 
@@ -51,16 +55,25 @@ int toTXT(std::string fileToRead)
 
     unsigned int intensity;
     while (reader.ReadNextPoint()){
-        liblas::Point const& p = reader.GetPoint();
-        txtfile.precision(11);
-        // convert intensity from an 8 bits scale to an 16 bits scale.
-        intensity= static_cast<unsigned int>( ( (p.GetIntensity() - 0) / (255 - 0) ) * 65535 );
 
-        txtfile << p.GetX() << " " << p.GetY() << " " << p.GetZ() << " " << intensity << " " << intensity << " " << intensity << std::endl;
 
-        if (i % pInfo == static_cast<long long> (0))
-            std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << "\n";
-        i++;
+        if (i % skipPts == 0){
+            liblas::Point const& p = reader.GetPoint();
+            txtfile.precision(11);
+            // convert intensity from an 8 bits scale to an 16 bits scale.
+            if (colorDepth == 16)
+                intensity= static_cast<unsigned int>( ( (p.GetIntensity() - 0.0) / (255.0 - 0.0) ) * 65535.0 );
+            else
+                intensity = static_cast<unsigned int>( p.GetIntensity() );
+
+            txtfile << p.GetX() << " " << p.GetY() << " " << p.GetZ() << " " << intensity << " " << intensity << " " << intensity << std::endl;
+
+            if (i % pInfo == static_cast<long long> (0))
+                std::cout << "Point nr. :" <<  i  << "\t\t  x: " << p.GetX() << "  y: " << p.GetY() << "  z: " << p.GetZ() << intensity << "\n";
+
+        }
+
+       i++;
     }
 
     txtfile.close();
@@ -201,7 +214,7 @@ toPCD(std::string fileToRead,
     }
     else{
         std::string fileToWrite = fileToRead + ".ply";
-        std::cout << "Writing PCD output file: " << fileToWrite << std::endl;
+        std::cout << "Writing PLY output file: " << fileToWrite << std::endl;
         pcl::io::savePLYFileASCII(fileToWrite, *cloudFiltered);
         std::cerr << "Saved " << cloudFiltered->points.size () << " Points to " << fileToWrite << "\n" << std::endl;
     }
@@ -219,12 +232,14 @@ convertLAS(std::string fileToRead,
             std::vector<double> &minXYZValues,
             float gridLeafSize,
             bool subtractMinVals,
-            std::string ext)
+            std::string ext,
+            unsigned int skipPts,
+            unsigned int colorDepth)
 {
     if(ext.compare("pcd") == 0 || ext.compare("ply") == 0)
         toPCD <PointInT> (fileToRead, cloud, minXYZValues, gridLeafSize, subtractMinVals, ext);
     else
-        toTXT(fileToRead);
+        toTXT(fileToRead, skipPts, colorDepth);
 
 }
 
@@ -234,3 +249,6 @@ convertLAS(std::string fileToRead,
 
 
 
+
+
+#endif // CONVERTLAS_H
