@@ -60,7 +60,7 @@ int  main (int argc, char** argv){
     std::string ext = "txt";
     if (Extension_specified){
         pcl::console::parse (argc, argv, "-ext", ext);
-        if (ext.compare("pcd") != 0 || ext.compare("pcd") != 0 || ext.compare("pcd") != 0 )
+        if (ext.compare("pcd") == 0)
             std::cout << "debug: extension is: " << ext << std::endl;
         else {
             std::cout << "unknown extension: " << ext << "\nUsing default extension txt" << std::endl;
